@@ -1,12 +1,15 @@
 import json
 from urllib.parse import urljoin
 
+import collections
 import kombu
 from dirtyfields import DirtyFieldsMixin
 from django.apps import AppConfig
 from django.conf import settings
 from django.db import connection
 from django.db.models.signals import pre_delete, post_save
+from rest_framework.renderers import JSONRenderer, BaseRenderer
+from rest_framework.serializers import BaseSerializer
 
 from . import broker
 
@@ -21,49 +24,55 @@ class _FakeRequest(object):
 class NotificationConfig(AppConfig):
     name = 'idm_notification'
 
-    _notification_registry = {}
+    _notification_registry = collections.defaultdict(list)
 
     def ready(self):
         post_save.connect(self._instance_changed)
         pre_delete.connect(self._instance_deleted)
 
-    def register(self, model, serializer, exchange):
+    def register(self, *, serializer, exchange, model=None, renderer=JSONRenderer):
+        if model is None:
+            model = serializer.Meta.model
         if not isinstance(exchange, kombu.Exchange):
             exchange = kombu.Exchange(settings.BROKER_PREFIX + exchange, 'topic', durable=True)
         with broker.connection.acquire(block=True) as conn:
             exchange(conn).declare()
-        self._notification_registry[model] = (serializer, exchange)
+        assert issubclass(serializer, BaseSerializer)
+        assert issubclass(renderer, BaseRenderer)
+        self._notification_registry[model].append((serializer, renderer, exchange))
 
     def register_many(self, registrations):
         for registration in registrations:
-            self.register(*registration)
+            self.register(**registration)
 
     def _publish_change(self, sender, instance, **kwargs):
-        serializer, exchange = self._notification_registry[sender]
-
         needs_publish = instance._needs_publish
         instance._needs_publish = set()
 
-        if 'created' in needs_publish and 'deleted' in needs_publish:
-            return
-        elif not needs_publish:
-            return
-        elif 'deleted' in needs_publish:
-            publish_type = 'deleted'
-        elif 'created' in needs_publish:
-            publish_type = 'created'
-        else:
-            publish_type = 'changed'
+        for serializer, renderer, exchange in self._notification_registry[sender]:
+            if 'created' in needs_publish and 'deleted' in needs_publish:
+                return
+            elif not needs_publish:
+                return
+            elif 'deleted' in needs_publish:
+                publish_type = 'deleted'
+            elif 'created' in needs_publish:
+                publish_type = 'created'
+            else:
+                publish_type = 'changed'
 
-        serializer = serializer(context={'request': _FakeRequest()})
+            serializer = serializer(context={'request': _FakeRequest()})
+            renderer = renderer()
+            assert isinstance(renderer, BaseRenderer)
 
-        with broker.connection.acquire(block=True) as conn:
-            exchange = exchange(conn)
-            exchange.publish(exchange.Message(json.dumps(serializer.to_representation(instance)),
-                                              content_type='application/json'),
-                             routing_key='{}.{}.{}'.format(type(instance).__name__,
-                                                           publish_type,
-                                                           instance.pk))
+            with broker.connection.acquire(block=True) as conn:
+                exchange = exchange(conn)
+                representation = serializer.to_representation(instance)
+                exchange.publish(exchange.Message(renderer.render(representation),
+                                                  content_type=renderer.media_type),
+                                 routing_key='{}.{}.{}'.format(representation.get('@type') or type(instance).__name__,
+                                                               publish_type,
+                                                               instance.pk))
 
     def _needs_publish(self, instance, publish_type):
         sender = type(instance)
