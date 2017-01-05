@@ -11,8 +11,8 @@ from django.db.models.signals import pre_delete, post_save
 from rest_framework.renderers import JSONRenderer, BaseRenderer
 from rest_framework.serializers import BaseSerializer
 
-from . import broker
-
+from kombu import Connection
+from kombu.pools import connections
 
 class _FakeRequest(object):
     def build_absolute_uri(self, url):
@@ -21,29 +21,40 @@ class _FakeRequest(object):
     GET = {}
 
 
-class NotificationConfig(AppConfig):
-    name = 'idm_notification'
+class IDMBrokerConfig(AppConfig):
+    name = 'idm_broker'
 
     _notification_registry = collections.defaultdict(list)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.broker = connections[Connection(hostname=settings.BROKER_HOSTNAME,
+                                            ssl=settings.BROKER_SSL,
+                                            virtual_host=settings.BROKER_VHOST,
+                                            userid=settings.BROKER_USERNAME,
+                                            password=settings.BROKER_PASSWORD,
+                                            transport=settings.BROKER_TRANSPORT)]
+        self.broker_prefix = settings.BROKER_PREFIX
+
 
     def ready(self):
         post_save.connect(self._instance_changed)
         pre_delete.connect(self._instance_deleted)
 
-    def register(self, *, serializer, exchange, model=None, renderer=JSONRenderer):
+    def register_notification(self, *, serializer, exchange, model=None, renderer=JSONRenderer):
         if model is None:
             model = serializer.Meta.model
         if not isinstance(exchange, kombu.Exchange):
             exchange = kombu.Exchange(settings.BROKER_PREFIX + exchange, 'topic', durable=True)
-        with broker.connection.acquire(block=True) as conn:
+        with self.broker.acquire(block=True) as conn:
             exchange(conn).declare()
         assert issubclass(serializer, BaseSerializer)
         assert issubclass(renderer, BaseRenderer)
         self._notification_registry[model].append((serializer, renderer, exchange))
 
-    def register_many(self, registrations):
+    def register_notifications(self, registrations):
         for registration in registrations:
-            self.register(**registration)
+            self.register_notification(**registration)
 
     def _publish_change(self, sender, instance, **kwargs):
         needs_publish = instance._needs_publish
@@ -65,7 +76,7 @@ class NotificationConfig(AppConfig):
             renderer = renderer()
             assert isinstance(renderer, BaseRenderer)
 
-            with broker.connection.acquire(block=True) as conn:
+            with self.broker.acquire(block=True) as conn:
                 exchange = exchange(conn)
                 representation = serializer.to_representation(instance)
                 exchange.publish(exchange.Message(renderer.render(representation),
