@@ -10,5 +10,5 @@ setup(
     url='https://github.com/alexsdutton/idm-notification',
     license='BSD',
     packages=find_packages(exclude=("test*", )),
-    install_requires=['kombu', 'djangorestframework'],
+    install_requires=['kombu', 'djangorestframework', 'django-dirtyfields'],
 )

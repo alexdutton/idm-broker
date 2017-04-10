@@ -14,6 +14,7 @@ from rest_framework.serializers import BaseSerializer
 from kombu import Connection
 from kombu.pools import connections
 
+
 class _FakeRequest(object):
     def build_absolute_uri(self, url):
         return urljoin(settings.API_BASE, url)
@@ -35,7 +36,6 @@ class IDMBrokerConfig(AppConfig):
                                             password=settings.BROKER_PASSWORD,
                                             transport=settings.BROKER_TRANSPORT)]
         self.broker_prefix = settings.BROKER_PREFIX
-
 
     def ready(self):
         post_save.connect(self._instance_changed)
