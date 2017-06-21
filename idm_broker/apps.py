@@ -26,6 +26,7 @@ class IDMBrokerConfig(AppConfig):
     name = 'idm_broker'
 
     _notification_registry = collections.defaultdict(list)
+    _related_notification_registry = collections.defaultdict(list)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -55,6 +56,9 @@ class IDMBrokerConfig(AppConfig):
     def register_notifications(self, registrations):
         for registration in registrations:
             self.register_notification(**registration)
+
+    def register_related_notification(self, model, accessor):
+        self._related_notification_registry[model].append(accessor)
 
     def _publish_change(self, sender, instance, **kwargs):
         needs_publish = instance._needs_publish
@@ -94,13 +98,23 @@ class IDMBrokerConfig(AppConfig):
             instance._needs_publish = {publish_type}
         connection.on_commit(lambda: self._publish_change(sender, instance))
 
-    def _instance_changed(self, sender, instance, created, **kwargs):
+    def _instance_changed(self, sender, instance, created, force=False, **kwargs):
         if sender in self._notification_registry:
             publish_type = 'created' if created else 'changed'
-            if not created and isinstance(instance, DirtyFieldsMixin) and not instance.is_dirty():
+            if not force and not created and isinstance(instance, DirtyFieldsMixin) and not instance.is_dirty():
                 return
             self._needs_publish(instance, publish_type)
+        if sender in self._related_notification_registry:
+            for accessor in self._related_notification_registry[sender]:
+                related = accessor(instance)
+                if related:
+                    self._instance_changed(sender=type(related), instance=related, created=False, force=True)
 
     def _instance_deleted(self, sender, instance, **kwargs):
         if sender in self._notification_registry:
             self._needs_publish(instance, 'deleted')
+        if sender in self._related_notification_registry:
+            for accessor in self._related_notification_registry[sender]:
+                related = accessor(instance)
+                if related:
+                    self._instance_changed(sender=type(related), instance=related, created=False, force=True)
