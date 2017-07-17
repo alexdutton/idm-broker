@@ -1,0 +1,16 @@
+language: python
+services:
+  - postgresql
+addons:
+  postgresql: "9.4"
+python:
+  - "3.4"
+  - "3.5"
+install:
+  - pip install -r requirements.txt
+  - pip install codecov
+env:
+  - DJANGO_SETTINGS_MODULE=idm_broker.tests.settings
+script: PYTHONPATH=. coverage run --source=. `which django-admin.py` test
+after_success:
+  - codecov
