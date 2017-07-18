@@ -57,7 +57,7 @@ class BrokerTaskConsumer(ConsumerMixin):
                     'properties': message.properties,
                     'headers': message.headers,
                 })
-            except Exception:
+            except Exception:  # pragma: nocover
                 message.reject()
                 logger.exception("Couldn't send task for '%s' (%s, %s)",
                                  task_name, message.delivery_tag, message.delivery_info['routing_key'], extra={
