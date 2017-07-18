@@ -1,4 +1,5 @@
 Django
+celery
 kombu
 django-dirtyfields
 djangorestframework
