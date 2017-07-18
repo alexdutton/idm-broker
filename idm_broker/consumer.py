@@ -1,4 +1,5 @@
 import logging
+import threading
 
 import celery.app
 from celery.app.base import App
@@ -13,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class BrokerTaskConsumer(ConsumerMixin):
+    def __init__(self):
+        super().__init__()
+        self.ready = threading.Event()
+
     def __call__(self):
         idm_broker_config = apps.get_app_config('idm_broker')
         with idm_broker_config.broker.acquire(block=True) as conn:
@@ -28,21 +33,24 @@ class BrokerTaskConsumer(ConsumerMixin):
     def get_consumers(self, Consumer, channel):
         consumers = []
         for c in settings.IDM_BROKER['CONSUMERS']:
-            callbacks = [self.get_send_task(name) for name in c['tasks']]
+            callbacks = [self.get_callback(name) for name in c['tasks']]
             consumers.append(Consumer(queues=c['queues'],
                                       accept=c.get('accept'),
                                       callbacks=callbacks,
                                       auto_declare=True))
         return consumers
 
-    def get_send_task(self, name):
+    def on_consume_ready(self, connection, channel, consumers, **kwargs):
+        super().on_consume_ready(connection, channel, consumers, **kwargs)
+        self.ready.set()
+
+    def get_callback(self, task_name):
         def f(body, message):
             celery_app = celery.app.default_app
-            print(type(celery_app))
             assert isinstance(celery_app, App)
             assert isinstance(message, Message)
             try:
-                celery_app.send_task(name, kwargs={
+                celery_app.send_task(task_name, kwargs={
                     'body': body,
                     'delivery_info': message.delivery_info,
                     'content_type': message.content_type,
@@ -52,14 +60,14 @@ class BrokerTaskConsumer(ConsumerMixin):
             except Exception:
                 message.reject()
                 logger.exception("Couldn't send task for '%s' (%s, %s)",
-                                 name, message.delivery_tag, message.delivery_info['routing_key'], extra={
+                                 task_name, message.delivery_tag, message.delivery_info['routing_key'], extra={
                         'body': body,
                         'delivery_info': message.delivery_info,
                     })
             else:
                 message.ack()
                 logger.debug("Sent task for '%s' (%s, %s)",
-                             name, message.delivery_tag, message.delivery_info['routing_key'], extra={
+                             task_name, message.delivery_tag, message.delivery_info['routing_key'], extra={
                         'body': body,
                         'delivery_info': message.delivery_info,
                     })
