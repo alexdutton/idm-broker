@@ -1,1 +1,1 @@
-from .celery import app as celery_app
+from idm_broker.tests.test_app.celery import app as celery_app

@@ -6,6 +6,7 @@ SECRET_KEY = 'secret key for testing'
 
 INSTALLED_APPS = [
     'idm_broker.apps.IDMBrokerConfig',
+    'idm_broker.tests.test_app.apps.TestAppConfig',
 ]
 
 DJANGO_ALLOWED_HOSTS = ['localhost']
@@ -32,3 +33,7 @@ IDM_BROKER = {
         'tasks': ['idm_broker.tests.tasks.test_task'],
     }],
 }
+
+ROOT_URLCONF = 'idm_broker.tests.test_app.urls'
+
+API_BASE = 'http://example.org/'

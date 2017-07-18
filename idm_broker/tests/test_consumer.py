@@ -1,14 +1,12 @@
 import json
 from unittest import mock
 
-import celery.app
 import kombu
-import time
 from django.apps import apps
 from django.test import TestCase
 
+from idm_broker.tests.test_app.celery import app as celery_app
 from idm_broker.tests.utils import BrokerTaskConsumerTestCaseMixin
-from idm_broker.tests.celery import app as celery_app
 
 
 class ConsumerTestCase(BrokerTaskConsumerTestCaseMixin, TestCase):
