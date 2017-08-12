@@ -103,6 +103,14 @@ class IDMBrokerConfig(AppConfig):
             publish_type = 'created' if created else 'changed'
             if not force and not created and isinstance(instance, DirtyFieldsMixin) and not instance.is_dirty():
                 return
+            # If we can see which fields have changed, then if all of those have auto_now=True, then we don't need to
+            # publish anything
+            if isinstance(instance, DirtyFieldsMixin):
+                for field in instance.get_dirty_fields():
+                    if not getattr(instance._meta.get_field(field), 'auto_now', False):
+                        break
+                else:
+                    return
             self._needs_publish(instance, publish_type)
         if sender in self._related_notification_registry:
             for accessor in self._related_notification_registry[sender]:
