@@ -15,7 +15,8 @@ from kombu.pools import connections
 
 
 class _FakeRequest(object):
-    def build_absolute_uri(self, url):
+    @classmethod
+    def build_absolute_uri(cls, url):
         return urljoin(settings.API_BASE, url)
 
     GET = {}

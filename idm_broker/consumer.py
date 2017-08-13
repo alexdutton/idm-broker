@@ -44,7 +44,8 @@ class BrokerTaskConsumer(ConsumerMixin):
         super().on_consume_ready(connection, channel, consumers, **kwargs)
         self.ready.set()
 
-    def get_callback(self, task_name):
+    @classmethod
+    def get_callback(cls, task_name):
         def f(body, message):
             celery_app = celery.app.default_app
             assert isinstance(celery_app, App)
