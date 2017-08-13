@@ -116,7 +116,7 @@ class RelatedNotificationTestCase(TransactionTestCase):
             queue.bind_to(exchange=kombu.Exchange('idm_broker.test.person'), routing_key='#')
 
             with transaction.atomic():
-                robot = Robot.objects.create(name='Scutter', owner=person)
+                Robot.objects.create(name='Scutter', owner=person)
 
             message = queue.get()
             self.assertIsInstance(message, kombu.Message)
