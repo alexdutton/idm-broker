@@ -10,3 +10,7 @@ class TestAppConfig(AppConfig):
         apps.get_app_config('idm_broker').register_notifications([
             {'serializer': serializers.PersonSerializer, 'exchange': 'person'},
         ])
+        apps.get_app_config('idm_broker').register_related_notification(
+            model=models.Robot,
+            accessor=lambda robot: robot.owner
+        )

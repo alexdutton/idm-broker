@@ -4,7 +4,8 @@ from rest_framework import routers
 from . import views
 
 router = routers.DefaultRouter()
-router.register('oidc/client',views.PersonViewSet, base_name='person')
+router.register('person', views.PersonViewSet, base_name='person')
+router.register('robot', views.RobotViewSet, base_name='robot')
 
 
 urlpatterns = [

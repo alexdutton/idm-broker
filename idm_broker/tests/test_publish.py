@@ -9,7 +9,6 @@ from idm_broker.tests.test_app.models import Person, Robot
 
 
 class NotificationTestCase(TransactionTestCase):
-
     def setUp(self):
         self.broker = apps.get_app_config('idm_broker').broker
 
@@ -57,7 +56,6 @@ class NotificationTestCase(TransactionTestCase):
                              'Person.deleted.{}'.format(str(person.id)))
             self.assertEqual(message.content_type, 'application/json')
 
-
     def testNoNotifcationWhenNotChanged(self):
         with self.broker.acquire(block=True) as conn:
             with transaction.atomic():
@@ -102,3 +100,47 @@ class NotificationTestCase(TransactionTestCase):
                              'Person.changed.{}'.format(str(person.id)))
             self.assertEqual(message.content_type, 'application/json')
             self.assertEqual(json.loads(message.body.decode())['name'], 'Bob')
+
+
+class RelatedNotificationTestCase(TransactionTestCase):
+    def setUp(self):
+        self.broker = apps.get_app_config('idm_broker').broker
+
+    def testRelatedCreate(self):
+        with self.broker.acquire(block=True) as conn:
+            with transaction.atomic():
+                person = Person()
+                person.save()
+            queue = kombu.Queue(exclusive=True).bind(conn)
+            queue.declare()
+            queue.bind_to(exchange=kombu.Exchange('idm_broker.test.person'), routing_key='#')
+
+            with transaction.atomic():
+                robot = Robot.objects.create(name='Scutter', owner=person)
+
+            message = queue.get()
+            self.assertIsInstance(message, kombu.Message)
+            self.assertEqual(message.delivery_info['routing_key'],
+                             'Person.changed.{}'.format(str(person.id)))
+            self.assertEqual(message.content_type, 'application/json')
+            self.assertEqual(json.loads(message.body.decode())['robots'][0]['name'], 'Scutter')
+
+    def testRelatedDelete(self):
+        with self.broker.acquire(block=True) as conn:
+            with transaction.atomic():
+                person = Person()
+                person.save()
+                robot = Robot.objects.create(name='Scutter', owner=person)
+            queue = kombu.Queue(exclusive=True).bind(conn)
+            queue.declare()
+            queue.bind_to(exchange=kombu.Exchange('idm_broker.test.person'), routing_key='#')
+
+            with transaction.atomic():
+                robot.delete()
+
+            message = queue.get()
+            self.assertIsInstance(message, kombu.Message)
+            self.assertEqual(message.delivery_info['routing_key'],
+                             'Person.changed.{}'.format(str(person.id)))
+            self.assertEqual(message.content_type, 'application/json')
+            self.assertEqual(json.loads(message.body.decode())['robots'], [])
