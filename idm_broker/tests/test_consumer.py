@@ -1,10 +1,12 @@
 import json
+import logging
 from unittest import mock
 
 import kombu
 from django.apps import apps
 from django.test import TestCase
 
+from idm_broker.management.commands.broker_task_consumer import Command as BrokerTaskConsumerCommand
 from idm_broker.tests.test_app.celery import app as celery_app
 from idm_broker.tests.utils import BrokerTaskConsumerTestCaseMixin
 
@@ -42,3 +44,27 @@ class ConsumerTestCase(BrokerTaskConsumerTestCaseMixin, TestCase):
             self.assertEqual(message_body, send_task.call_args[1]['kwargs']['body'])
             self.assertEqual(headers, send_task.call_args[1]['kwargs']['headers'])
             self.assertEqual('application/json', send_task.call_args[1]['kwargs']['content_type'])
+
+
+@mock.patch('idm_broker.consumer.BrokerTaskConsumer')
+class ManagementCommandTestCase(TestCase):
+    def testNormalInvocation(self, broker_task_consumer_cls):
+        command = BrokerTaskConsumerCommand()
+        options = {'verbosity': 0}
+
+        broker_task_consumer = mock.Mock()
+        broker_task_consumer_cls.return_value = broker_task_consumer
+        command.handle(**options)
+        self.assertEqual(1, broker_task_consumer_cls.call_count)
+        self.assertEqual(1, broker_task_consumer.call_count)
+
+    def testVerboseInvocation(self, broker_task_consumer_cls):
+        command = BrokerTaskConsumerCommand()
+        options = {'verbosity': 2}
+
+        broker_task_consumer = mock.Mock()
+        broker_task_consumer_cls.return_value = broker_task_consumer
+        command.handle(**options)
+        self.assertEqual(1, broker_task_consumer_cls.call_count)
+        self.assertEqual(1, broker_task_consumer.call_count)
+        self.assertEqual(logging.DEBUG, logging.getLogger().level)

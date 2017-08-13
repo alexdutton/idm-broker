@@ -4,7 +4,7 @@ from optparse import OptionParser
 from argparse import ArgumentParser
 from django.core.management import BaseCommand
 
-from idm_broker.consumer import BrokerTaskConsumer
+import idm_broker.consumer
 
 
 class Command(BaseCommand):
@@ -15,5 +15,5 @@ class Command(BaseCommand):
         if options['verbosity'] > 1:
             logging.basicConfig(level=logging.DEBUG)
 
-        daemon = BrokerTaskConsumer()
+        daemon = idm_broker.consumer.BrokerTaskConsumer()
         daemon()
