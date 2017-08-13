@@ -112,17 +112,15 @@ class IDMBrokerConfig(AppConfig):
                 else:
                     return
             self._needs_publish(instance, publish_type)
-        if sender in self._related_notification_registry:
-            for accessor in self._related_notification_registry[sender]:
-                related = accessor(instance)
-                if related:
-                    self._instance_changed(sender=type(related), instance=related, created=False, force=True)
+        for accessor in self._related_notification_registry[sender]:
+            related = accessor(instance)
+            if related:
+                self._instance_changed(sender=type(related), instance=related, created=False, force=True)
 
     def _instance_deleted(self, sender, instance, **kwargs):
         if sender in self._notification_registry:
             self._needs_publish(instance, 'deleted')
-        if sender in self._related_notification_registry:
-            for accessor in self._related_notification_registry[sender]:
-                related = accessor(instance)
-                if related:
-                    self._instance_changed(sender=type(related), instance=related, created=False, force=True)
+        for accessor in self._related_notification_registry[sender]:
+            related = accessor(instance)
+            if related:
+                self._instance_changed(sender=type(related), instance=related, created=False, force=True)
