@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages  # pragma: no cover
+from setuptools import setup, find_packages
 
 setup(
     name='idm-notification',
@@ -11,4 +11,4 @@ setup(
     license='BSD',
     packages=find_packages(exclude=("test*", )),
     install_requires=['kombu', 'djangorestframework', 'django-dirtyfields'],
-)  # pragma: no cover
+)

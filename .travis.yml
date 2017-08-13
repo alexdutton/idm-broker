@@ -12,6 +12,6 @@ install:
   - pip install codecov
 env:
   - DJANGO_SETTINGS_MODULE=idm_broker.tests.settings
-script: PYTHONPATH=. coverage run --source=. `which django-admin.py` test
+script: PYTHONPATH=. coverage run --source=idm_broker `which django-admin.py` test
 after_success:
   - codecov
