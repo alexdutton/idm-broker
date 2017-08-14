@@ -2,7 +2,6 @@ import logging
 import threading
 
 import celery.app
-from celery.app.base import App
 from django.apps import apps
 from django.conf import settings
 from django.db import connection
@@ -53,7 +52,7 @@ class BrokerTaskConsumer(ConsumerMixin):
     @classmethod
     def get_callback(cls, task_name):
         def f(body, message: Message):
-            celery_app = celery.app.default_app  # type: App
+            celery_app = celery.app.default_app  # type: celery.app.base.App
             try:
                 celery_app.send_task(task_name, kwargs={
                     'body': body,
