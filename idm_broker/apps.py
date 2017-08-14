@@ -93,7 +93,7 @@ class IDMBrokerConfig(AppConfig):
     def _needs_publish(self, instance, publish_type):
         sender = type(instance)
         if sender not in self._notification_registry:
-            raise AssertionError("Unexpected sender")
+            raise AssertionError("Unexpected sender")  # pragma: no cover
         try:
             instance._needs_publish.add(publish_type)
         except AttributeError:
