@@ -25,7 +25,7 @@ class ConsumerTestCase(BrokerTaskConsumerTestCaseMixin, TestCase):
         idm_broker_config = apps.get_app_config('idm_broker')
         with idm_broker_config.broker.acquire(block=True) as conn:
             exchange = kombu.Exchange('test.exchange', type='topic').bind(conn)
-            assert isinstance(exchange, kombu.Exchange)
+            self.assertIsInstance(exchange, kombu.Exchange)
 
             message = exchange.Message(
                 body=json.dumps(message_body).encode(),

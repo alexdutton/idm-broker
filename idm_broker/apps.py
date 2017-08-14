@@ -42,15 +42,17 @@ class IDMBrokerConfig(AppConfig):
         post_save.connect(self._instance_changed)
         pre_delete.connect(self._instance_deleted)
 
-    def register_notification(self, *, serializer, exchange, model=None, renderer=JSONRenderer):
+    def register_notification(self, *,
+                              serializer: BaseSerializer,
+                              exchange,
+                              model=None,
+                              renderer: BaseRenderer=JSONRenderer):
         if model is None:
             model = serializer.Meta.model
         if not isinstance(exchange, kombu.Exchange):
             exchange = kombu.Exchange(settings.BROKER_PREFIX + exchange, 'topic', durable=True)
         with self.broker.acquire(block=True) as conn:
             exchange(conn).declare()
-        assert issubclass(serializer, BaseSerializer)
-        assert issubclass(renderer, BaseRenderer)
         self._notification_registry[model].append((serializer, renderer, exchange))
 
     def register_notifications(self, registrations):
@@ -77,8 +79,7 @@ class IDMBrokerConfig(AppConfig):
                 publish_type = 'changed'
 
             serializer = serializer(context={'request': _FakeRequest()})
-            renderer = renderer()
-            assert isinstance(renderer, BaseRenderer)
+            renderer = renderer()  # type: BaseRenderer
 
             with self.broker.acquire(block=True) as conn:
                 exchange = exchange(conn)
@@ -91,7 +92,8 @@ class IDMBrokerConfig(AppConfig):
 
     def _needs_publish(self, instance, publish_type):
         sender = type(instance)
-        assert sender in self._notification_registry
+        if sender not in self._notification_registry:
+            raise AssertionError("Unexpected sender")
         try:
             instance._needs_publish.add(publish_type)
         except AttributeError:

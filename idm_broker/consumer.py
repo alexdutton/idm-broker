@@ -46,10 +46,8 @@ class BrokerTaskConsumer(ConsumerMixin):
 
     @classmethod
     def get_callback(cls, task_name):
-        def f(body, message):
-            celery_app = celery.app.default_app
-            assert isinstance(celery_app, App)
-            assert isinstance(message, Message)
+        def f(body, message: Message):
+            celery_app = celery.app.default_app  # type: App
             try:
                 celery_app.send_task(task_name, kwargs={
                     'body': body,
