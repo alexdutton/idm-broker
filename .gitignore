@@ -1,4 +1,6 @@
+/build
+/idm_broker.egg-info
+/docs/_build
 __pycache__
-/.idea
-*.pyc
 /.coverage
+/.idea

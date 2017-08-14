@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class BrokerTaskConsumer(ConsumerMixin):
+    """
+    A kombu :py:class:`kombu.mixins.ConsumerMixin` that consumes from queues declared in
+    ``settings.IDM_BROKER['CONSUMERS']``, and dispatches each message received to one or more configured celery tasks.
+    """
+    ready = None  # type: threading.Event
+
     def __init__(self):
         super().__init__()
         self.ready = threading.Event()
