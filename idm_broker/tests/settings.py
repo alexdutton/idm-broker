@@ -5,8 +5,13 @@ DEBUG = False
 SECRET_KEY = 'secret key for testing'
 
 INSTALLED_APPS = [
-    'idm_broker.apps.IDMBrokerConfig',
-    'idm_broker.tests.test_app.apps.TestAppConfig',
+    'idm_broker',
+    'idm_broker.tests.test_app',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.staticfiles',
+    'rest_framework',
 ]
 
 DJANGO_ALLOWED_HOSTS = ['localhost']

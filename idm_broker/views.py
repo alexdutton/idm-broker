@@ -6,15 +6,15 @@ import defusedxml.lxml
 from django.apps import apps
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils.decorators import method_decorator
-from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 import lxml.etree
+from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class XMLConsumeView(View):
+class XMLConsumeView(APIView):
     """A view to which one POSTs XML documents, which are then queued for processing"""
 
     xpath = None
