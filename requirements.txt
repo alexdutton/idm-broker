@@ -2,5 +2,6 @@ Django
 celery
 defusedxml
 kombu
+lxml
 django-dirtyfields
 djangorestframework
