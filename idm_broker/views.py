@@ -45,19 +45,30 @@ class XMLConsumeView(APIView):
 
 class XMLConsumeToExchangeView(XMLConsumeView):
     exchange = None
+    routing_key = None
     _bound_exchange = None
+
+    @classmethod
+    def as_view(cls, **initkwargs):
+        broker = apps.get_app_config('idm_broker').broker
+        with broker.acquire(block=True) as conn:
+            exchange = initkwargs.get('exchange', cls.exchange)
+            exchange(conn).declare()
+        return super(XMLConsumeToExchangeView, cls).as_view(**initkwargs)
 
     def post(self, request, **kwargs):
         broker = apps.get_app_config('idm_broker').broker
         with broker.acquire(block=True) as conn:
             self._bound_exchange = self.exchange(conn)
-            super().post(request, **kwargs)
+            return super(XMLConsumeToExchangeView, self).post(request, **kwargs)
 
     def process_item(self, request, item):
         exchange = self._bound_exchange
-        exchange.publish(exchange.Message(defusedxml.lxml.tostring(item),
-                                          content_type='application/xml'))
-        super().process_item(request, item)
+        body = defusedxml.lxml.tostring(item, encoding='utf-8').decode('utf-8')
+        exchange.publish(exchange.Message(body,
+                                          content_type='application/xml'),
+                         routing_key=self.routing_key or '')
+        super(XMLConsumeToExchangeView, self).process_item(request, item)
 
 
 class XMLConsumeToTaskView(XMLConsumeView):
@@ -75,4 +86,4 @@ class XMLConsumeToTaskView(XMLConsumeView):
             logger.exception("Couldn't send task for '%s'", self.task_name,
                              extra={'body': body})
             raise
-        super().process_item(request, item)
+        super(XMLConsumeToTaskView, self).process_item(request, item)

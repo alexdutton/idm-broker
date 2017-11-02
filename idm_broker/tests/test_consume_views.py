@@ -1,6 +1,8 @@
 import http.client
 from unittest import mock
 
+import kombu
+from django.apps import apps
 from rest_framework.test import APITestCase
 
 from idm_broker.tests.test_app.celery import app as celery_app
@@ -8,6 +10,9 @@ from idm_broker.tests.test_app.celery import app as celery_app
 
 class ConsumeViewTestCase(APITestCase):
     data = b'<some-xml xmlns="http://example.org/"><child attr="one"/><child attr="two"/></some-xml>'
+
+    def setUp(self):
+        self.broker = apps.get_app_config('idm_broker').broker
 
     @mock.patch.object(celery_app, 'send_task')
     def test_task_queued(self, send_task):
@@ -50,3 +55,20 @@ class ConsumeViewTestCase(APITestCase):
                                     content_type='application/xml')
         self.assertEqual(response.status_code, http.client.BAD_REQUEST)
         self.assertFalse(send_task.called)
+
+    def test_published(self):
+        with self.broker.acquire(block=True) as conn:
+            queue = kombu.Queue(exclusive=True).bind(conn)
+            queue.declare()
+            queue.bind_to(exchange=kombu.Exchange('idm_broker.test.xml'), routing_key='#')
+
+            response = self.client.post('/api/xml-consume-to-exchange/',
+                                        data=self.data,
+                                        content_type='application/xml')
+            self.assertEqual(response.status_code, http.client.ACCEPTED)
+
+            message = queue.get()
+            self.assertIsInstance(message, kombu.Message)
+            self.assertEqual(message.delivery_info['routing_key'], 'xml-routing-key')
+            self.assertEqual(message.content_type, 'application/xml')
+
