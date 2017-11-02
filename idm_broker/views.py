@@ -31,7 +31,6 @@ class XMLConsumeView(APIView):
             return HttpResponseBadRequest("XML syntax error: {}\n".format(e))
         if self.xpath:
             items = data.xpath(self.xpath, namespaces=self.namespaces)
-            print(items)
         else:
             items = [data]
 

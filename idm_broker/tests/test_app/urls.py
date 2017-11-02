@@ -10,6 +10,11 @@ router.register('robot', views.RobotViewSet, base_name='robot')
 
 
 urlpatterns = [
-    url(r'^api/xml-consume-to-task/$', XMLConsumeToTaskView.as_view(task_name='idm_broker.tests.tasks.test_task')),
+    url(r'^api/xml-consume-to-task/$',
+        XMLConsumeToTaskView.as_view(task_name='idm_broker.tests.tasks.test_task')),
+    url(r'^api/xml-consume-to-task-xpath/$',
+        XMLConsumeToTaskView.as_view(task_name='idm_broker.tests.tasks.test_task',
+                                     xpath='/ex:some-xml/ex:child',
+                                     namespaces={'ex': 'http://example.org/'})),
     url(r'^api/', include(router.urls)),
 ]
