@@ -7,6 +7,7 @@ A common-use module to support:
 * consuming messages from a kombu queue and passing them to celery tasks
 * publishing `django-rest-framework`-serialized representations to kombu exchanges when model instances change and the
   transaction has been successfully committed
+* receiving XML POSTed to an API, optionally chopping it up, and piping it to a kombu exchange or celery task
 
 Together, these provide inbound and outbound messaging for including Django applications in an event-driven
 architecture.
@@ -37,3 +38,4 @@ To publish model changes to a kombu exchange, add this to your Django `AppConfig
         apps.get_app_config('idm_broker').register_notifications([
             {'serializer': serializers.UserSerializer, 'exchange': 'user'},
         ])
+
