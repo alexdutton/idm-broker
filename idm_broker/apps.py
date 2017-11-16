@@ -107,7 +107,7 @@ class IDMBrokerConfig(AppConfig):
                 return
             # If we can see which fields have changed, then if all of those have auto_now=True, then we don't need to
             # publish anything
-            if not force and isinstance(instance, DirtyFieldsMixin):
+            if not force and not created and isinstance(instance, DirtyFieldsMixin):
                 for field in instance.get_dirty_fields():
                     if not getattr(instance._meta.get_field(field), 'auto_now', False):
                         break
